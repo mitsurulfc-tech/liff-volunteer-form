@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แอปเริ่มต้น LIFF</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Fallback for Inter font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    </style>
+</head>
+<body class="font-sans">
+
+  <!-- Section for LIFF Loading -->
+  <div id="liff-loader" class="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+    <h1 class="text-2xl font-bold mb-4 text-gray-800">กำลังโหลดแอป LIFF...</h1>
+    <p class="text-gray-600 mb-6 text-center">กรุณารอสักครู่</p>
+    <!-- Simple spinner -->
+    <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+    <p id="liff-error" class="text-red-600 mt-4 text-center"></p>
+  </div>
+
+  <!-- Main App Content (Hidden by default) -->
+  <div id="app-content" class="hidden min-h-screen bg-gray-100 p-6">
+    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl">
+      <div class="p-8">
+        <h1 class="text-2xl font-bold text-center text-gray-900 mb-6">แอปเริ่มต้น LIFF</h1>
+        <div id="profile" class="text-center mb-6">
+          <img id="profilePicture" class="w-24 h-24 rounded-full mx-auto shadow-lg" src="https://placehold.co/150x150/E2E8F0/A0AEC0?text=โปรไฟล์" alt="Profile Picture">
+          <p id="displayName" class="mt-4 text-lg font-medium text-gray-700">ยังไม่ได้เข้าสู่ระบบ</p>
+          <p id="statusMessage" class="mt-1 text-sm text-gray-500"></p>
+        </div>
+        <div id="controls" class="flex flex-col space-y-4">
+          <button id="sendMessageButton" class="bg-green-500 text-white py-2 px-4 rounded-lg font-semibold shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 ease-in-out disabled:opacity-50" disabled>ส่งข้อความ</button>
+          <button id="logoutButton" class="bg-red-500 text-white py-2 px-4 rounded-lg font-semibold shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200 ease-in-out disabled:opacity-50" disabled>ออกจากระบบ</button>
+        </div>
+        <p id="general-status" class="mt-6 text-center text-gray-600"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    window.onload = () => {
+      // This is the new function that runs immediately
+      initializeLiff();
+    };
+
+    /**
+     * Initializes the LIFF app automatically.
+     */
+    async function initializeLiff() {
+      console.log("Attempting to initialize LIFF automatically...");
+      const errorElement = document.getElementById('liff-error');
+
+      try {
+        // liff.init() initializes the LIFF app.
+        // We pass an empty object {} and let the SDK find the LIFF ID
+        // from the URL (when opened in LINE).
+        await liff.init({});
+        
+        console.log("LIFF Initialization successful.");
+
+        // Hide loader and show app content
+        document.getElementById('liff-loader').classList.add('hidden');
+        document.getElementById('app-content').classList.remove('hidden');
+
+        // Add event listeners for app buttons
+        document.getElementById('sendMessageButton').addEventListener('click', sendMessage);
+        document.getElementById('logoutButton').addEventListener('click', logout);
+
+        // Check if the user is logged in
+        if (!liff.isLoggedIn()) {
+          console.log("User is not logged in. Redirecting to login...");
+          document.getElementById('general-status').textContent = 'ยังไม่ได้เข้าสู่ระบบ กำลังเปลี่ยนเส้นทางเพื่อเข้าสู่ระบบ...';
+          // liff.login() redirects to the LINE login screen.
+          liff.login();
+        } else {
+          console.log("User is logged in.");
+          document.getElementById('general-status').textContent = 'ผู้ใช้เข้าสู่ระบบแล้ว';
+          // If logged in, display profile and enable buttons
+          await displayProfile();
+          document.getElementById('sendMessageButton').disabled = false;
+          document.getElementById('logoutButton').disabled = false;
+        }
+
+      } catch (err) {
+        // Handle initialization errors
+        console.error("LIFF Initialization failed:", err);
+        // Display the error message
+        errorElement.textContent = `การเริ่มต้นล้มเหลว: ${err.message}. แอปนี้อาจต้องเปิดใช้งานภายในแอป LINE ครับ`;
+        
+        // Hide the spinner, just show the error
+        document.querySelector('#liff-loader .animate-spin').classList.add('hidden');
+        document.querySelector('#liff-loader h1').textContent = 'เกิดข้อผิดพลาด';
+      }
+    }
+
+    /**
+     * Fetches and displays the user's LINE profile.
+     */
+    async function displayProfile() {
+      try {
+        // liff.getProfile() returns a Promise with the user's profile.
+        const profile = await liff.getProfile();
+        console.log("Profile fetched:", profile);
+        document.getElementById('profilePicture').src = profile.pictureUrl || 'https://placehold.co/150x150/E2E8F0/A0AEC0?text=โปรไฟล์';
+        document.getElementById('displayName').textContent = profile.displayName;
+        document.getElementById('statusMessage').textContent = profile.statusMessage || '';
+      } catch (err) {
+        console.error("Failed to get profile:", err);
+        document.getElementById('displayName').textContent = 'เกิดข้อผิดพลาดในการโหลดโปรไฟล์';
+      }
+    }
+
+    /**
+     * Sends a simple text message on behalf of the user.
+     */
+    async function sendMessage() {
+      if (!liff.isInClient()) {
+        document.getElementById('general-status').textContent = 'ฟีเจอร์นี้ใช้ได้เฉพาะในแอป LINE เท่านั้น';
+        console.warn('sendMessage called outside of LINE client.');
+        return;
+      }
+      
+      try {
+        // liff.sendMessages() sends messages.
+        await liff.sendMessages([
+          {
+            type: 'text',
+            text: 'Hello from my LIFF app!'
+          }
+        ]);
+        console.log("Message sent successfully.");
+        document.getElementById('general-status').textContent = 'ส่งข้อความแล้ว!';
+        // liff.closeWindow() closes the LIFF app window.
+        liff.closeWindow();
+      } catch (err) {
+        console.error("Failed to send message:", err);
+        document.getElementById('general-status').textContent = `ข้อผิดพลาด: ${err.message}`;
+      }
+    }
+
+    /**
+     * Logs the user out.
+     */
+    function logout() {
+      if (liff.isLoggedIn()) {
+        console.log("Logging out...");
+        liff.logout();
+        // Reload the page to reset the state
+        window.location.reload();
+      } else {
+        console.log("User is not logged in.");
+      }
+    }
+  </script>
+</body>
+</html>
