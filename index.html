@@ -15,18 +15,13 @@
 </head>
 <body class="font-sans">
 
-  <!-- Section for LIFF ID Input -->
+  <!-- Section for LIFF Loading -->
   <div id="liff-loader" class="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-    <h1 class="text-2xl font-bold mb-4 text-gray-800">ตัวเริ่มต้นแอป LIFF</h1>
-    <p class="text-gray-600 mb-6 text-center">ไม่พบ LIFF ID ก่อนหน้า <br> กรุณาใส่ LIFF ID ที่ถูกต้องเพื่อดำเนินการต่อ</p>
-    <div class="w-full max-w-sm">
-      <!-- Pre-filling the old, non-working ID for context -->
-      <input id="liffIdInput" type="text" placeholder="ป้อน LIFF ID ของคุณ" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3" value="2008443309-RY8KqDTC">
-      <button id="initButton" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
-        เริ่มต้น LIFF
-      </button>
-      <p id="liff-error" class="text-red-600 mt-4 text-center"></p>
-    </div>
+    <h1 class="text-2xl font-bold mb-4 text-gray-800">กำลังโหลดแอป LIFF...</h1>
+    <p class="text-gray-600 mb-6 text-center">กรุณารอสักครู่</p>
+    <!-- Simple spinner -->
+    <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+    <p id="liff-error" class="text-red-600 mt-4 text-center"></p>
   </div>
 
   <!-- Main App Content (Hidden by default) -->
@@ -50,44 +45,31 @@
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
-    // Global variables
-    let liffId = '';
-
     window.onload = () => {
-      // Set up the listener for the initialize button
-      document.getElementById('initButton').addEventListener('click', initializeLiff);
-      document.getElementById('liff-error').textContent = ''; // Clear previous errors
+      // This is the new function that runs immediately
+      initializeLiff();
     };
 
     /**
-     * Initializes the LIFF app with the ID from the input field.
+     * Initializes the LIFF app automatically.
      */
     async function initializeLiff() {
-      const liffIdInput = document.getElementById('liffIdInput');
-      liffId = liffIdInput.value.trim();
+      console.log("Attempting to initialize LIFF automatically...");
       const errorElement = document.getElementById('liff-error');
-      
-      if (!liffId) {
-        errorElement.textContent = 'LIFF ID ห้ามว่าง';
-        return;
-      }
-
-      errorElement.textContent = 'กำลังเริ่มต้น...'; // Show loading state
-      console.log(`Attempting to initialize LIFF with ID: ${liffId}`);
 
       try {
         // liff.init() initializes the LIFF app.
-        // It returns a Promise that resolves when initialization is complete.
-        await liff.init({ liffId: liffId });
+        // We pass an empty object {} and let the SDK find the LIFF ID
+        // from the URL (when opened in LINE).
+        await liff.init({});
         
-        errorElement.textContent = ''; // Clear error on success
         console.log("LIFF Initialization successful.");
 
         // Hide loader and show app content
         document.getElementById('liff-loader').classList.add('hidden');
         document.getElementById('app-content').classList.remove('hidden');
 
-        // Add event listeners for app buttons now that init is done
+        // Add event listeners for app buttons
         document.getElementById('sendMessageButton').addEventListener('click', sendMessage);
         document.getElementById('logoutButton').addEventListener('click', logout);
 
@@ -96,7 +78,6 @@
           console.log("User is not logged in. Redirecting to login...");
           document.getElementById('general-status').textContent = 'ยังไม่ได้เข้าสู่ระบบ กำลังเปลี่ยนเส้นทางเพื่อเข้าสู่ระบบ...';
           // liff.login() redirects to the LINE login screen.
-          // The redirect will interrupt this script.
           liff.login();
         } else {
           console.log("User is logged in.");
@@ -110,11 +91,12 @@
       } catch (err) {
         // Handle initialization errors
         console.error("LIFF Initialization failed:", err);
-        // Display the error message to the user
-        errorElement.textContent = `การเริ่มต้นล้มเหลว: ${err.message} กรุณาตรวจสอบ LIFF ID แล้วลองอีกครั้ง`;
-        // Ensure app content remains hidden if init fails
-        document.getElementById('liff-loader').classList.remove('hidden');
-        document.getElementById('app-content').classList.add('hidden');
+        // Display the error message
+        errorElement.textContent = `การเริ่มต้นล้มเหลว: ${err.message}. แอปนี้อาจต้องเปิดใช้งานภายในแอป LINE ครับ`;
+        
+        // Hide the spinner, just show the error
+        document.querySelector('#liff-loader .animate-spin').classList.add('hidden');
+        document.querySelector('#liff-loader h1').textContent = 'เกิดข้อผิดพลาด';
       }
     }
 
